@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Kozmetik onizleme</title>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+<style>body{margin:0;background:#15141a;color:#ddd;font:13px Segoe UI}#g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px}.c{background:#1e1d24;border-radius:10px;padding:6px}.c canvas{width:100%;aspect-ratio:1;display:block}</style>
+</head><body><div id="g"></div>
+<script type="module">
+import { CosView } from './cosview.js';
+const cat = await (await fetch('cosmetics/catalog.json')).json();
+const g = document.getElementById('g');
+const views = new URLSearchParams(location.search).get('v') || 'front';
+for (const it of cat.items) {
+  const d = document.createElement('div'); d.className = 'c';
+  d.innerHTML = `<canvas></canvas><div>${it.name}</div>`; g.appendChild(d);
+  const v = new CosView(d.querySelector('canvas'), { static: false });
+  if (it.slot === 'sirt' || it.slot === 'pelerin') v.view('back'); else v.view(views);
+  await v.set(it.slot, it.id, it.anim);
+}
+window.READY = true;
+</script></body></html>

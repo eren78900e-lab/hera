@@ -1,0 +1,145 @@
+// Hera kozmetik 3D goruntuleyici (three.js). Oyundaki ayni model dosyalarini (cosmetics/*.json) cizer.
+import * as THREE from 'three';
+import { OrbitControls } from './vendor/OrbitControls.js';
+
+const cache = new Map();
+async function loadItem(id) {
+  if (!cache.has(id)) cache.set(id, fetch(`cosmetics/${id}.json`).then(r => r.json()));
+  return cache.get(id);
+}
+
+function faceTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 8;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c58c63'; g.fillRect(0, 0, 8, 8);
+  g.fillStyle = '#4a2f1d'; g.fillRect(0, 0, 8, 2); g.fillRect(0, 2, 1, 1); g.fillRect(7, 2, 1, 1);
+  g.fillStyle = '#fff'; g.fillRect(1, 4, 2, 1); g.fillRect(5, 4, 2, 1);
+  g.fillStyle = '#3b3fa0'; g.fillRect(2, 4, 1, 1); g.fillRect(5, 4, 1, 1);
+  g.fillStyle = '#8a5a3c'; g.fillRect(3, 5, 2, 1);
+  g.fillStyle = '#6b3d2a'; g.fillRect(2, 6, 4, 1);
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function box(w, h, d, color, faceTex) {
+  const mats = [];
+  for (let i = 0; i < 6; i++) mats.push(new THREE.MeshLambertMaterial({ color }));
+  if (faceTex) mats[5] = new THREE.MeshLambertMaterial({ map: faceTex }); // -z (on)
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats);
+  return m;
+}
+
+function buildMesh(data) {
+  const g = new THREE.Group();
+  for (const p of data.parts) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(p.pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(p.nrm, 3));
+    const col = new Float32Array(p.col.length);
+    for (let i = 0; i < col.length; i++) col[i] = p.col[i] / 255;
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    geo.setIndex(p.idx);
+    const mat = p.glow
+      ? new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })
+      : new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    g.add(new THREE.Mesh(geo, mat));
+  }
+  return g;
+}
+
+export class CosView {
+  constructor(canvas, opts = {}) {
+    this.canvas = canvas; this.static = !!opts.static;
+    this.r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: !!opts.snap });
+    this.r.setPixelRatio(Math.min(2, devicePixelRatio));
+    this.r.outputColorSpace = THREE.SRGBColorSpace;
+    this.scene = new THREE.Scene();
+    this.cam = new THREE.PerspectiveCamera(32, 1, 0.5, 400);
+    this.cam.position.set(-36, 38, -64);
+    this.scene.add(new THREE.HemisphereLight(0xfff4e0, 0x404050, 1.6));
+    const d = new THREE.DirectionalLight(0xffffff, 1.6); d.position.set(-30, 60, -40); this.scene.add(d);
+    const d2 = new THREE.DirectionalLight(0xffd59a, 0.6); d2.position.set(40, 20, 50); this.scene.add(d2);
+    // karakter
+    const ch = this.char = new THREE.Group();
+    const shirt = 0x2f9fb3, pants = 0x3b3f9e, skin = 0xc58c63;
+    const head = box(8, 8, 8, 0x4a2f1d, faceTexture()); head.position.set(0, 28, 0);
+    const body = box(8, 12, 4, shirt); body.position.set(0, 18, 0);
+    const la = box(4, 12, 4, skin); la.position.set(6, 18, 0);
+    const ra = box(4, 12, 4, skin); ra.position.set(-6, 18, 0);
+    const ll = box(4, 12, 4, pants); ll.position.set(2, 6, 0);
+    const rl = box(4, 12, 4, pants); rl.position.set(-2, 6, 0);
+    ch.add(head, body, la, ra, ll, rl);
+    this.scene.add(ch);
+    this.headAnchor = new THREE.Group(); this.headAnchor.position.set(0, 24, 0); ch.add(this.headAnchor);
+    this.backAnchor = new THREE.Group(); this.backAnchor.position.set(0, 24, 0); ch.add(this.backAnchor);
+    this.capeMesh = null;
+    this.slots = {};
+    if (!opts.static) {
+      this.ctl = new OrbitControls(this.cam, canvas);
+      this.ctl.target.set(0, 20, 0); this.ctl.enableDamping = true; this.ctl.enablePan = false;
+      this.ctl.minDistance = 25; this.ctl.maxDistance = 120;
+      this.ctl.autoRotate = !!opts.spin; this.ctl.autoRotateSpeed = 1.6;
+      this.ctl.update();
+    } else {
+      this.cam.lookAt(0, 22, 0);
+    }
+    this.t0 = performance.now();
+    this.resize();
+    if (!opts.static) {
+      const loop = () => { if (!this.dead) { requestAnimationFrame(loop); this.frame(); } };
+      loop();
+      new ResizeObserver(() => this.resize()).observe(canvas);
+    }
+  }
+  resize() {
+    const w = this.canvas.clientWidth || 300, h = this.canvas.clientHeight || 300;
+    this.r.setSize(w, h, false);
+    this.cam.aspect = w / h; this.cam.updateProjectionMatrix();
+  }
+  frame() {
+    const t = (performance.now() - this.t0) / 1000;
+    for (const [slot, g] of Object.entries(this.slots)) {
+      if (!g) continue;
+      if (g.userData.anim === 'bob') g.position.y = Math.sin(t * 2) * 0.35;
+      if (g.userData.anim === 'wings') {
+        const a = Math.sin(t * 1.6) * 0.12;
+        g.children.forEach(c => { }); // tek mesh: hafif sallanma
+        g.rotation.x = a * 0.4;
+      }
+    }
+    if (this.capeMesh) this.capeMesh.rotation.x = -(0.16 + Math.sin(t * 1.3) * 0.04);
+    this.ctl?.update();
+    this.r.render(this.scene, this.cam);
+  }
+  async set(slot, id, anim) {
+    const anchor = slot === 'sirt' ? this.backAnchor : this.headAnchor;
+    if (this.slots[slot]) { anchor.remove(this.slots[slot]); this.slots[slot] = null; }
+    if (slot === 'pelerin') return this.setCape(id);
+    if (!id) return;
+    const g = buildMesh(await loadItem(id));
+    g.userData.anim = anim;
+    anchor.add(g);
+    this.slots[slot] = g;
+  }
+  setCape(id) {
+    if (this.capeMesh) { this.backAnchor.remove(this.capeMesh); this.capeMesh = null; }
+    if (!id) return;
+    const tex = new THREE.TextureLoader().load(`cosmetics/${id}.png`);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const geo = new THREE.PlaneGeometry(10, 16);
+    // UV: pelerinin dis yuzu (1,1)-(11,17) / 64x32
+    const uv = geo.attributes.uv;
+    const u0 = 1 / 64, u1 = 11 / 64, v0 = 1 - 1 / 32, v1 = 1 - 17 / 32;
+    uv.setXY(0, u0, v0); uv.setXY(1, u1, v0); uv.setXY(2, u0, v1); uv.setXY(3, u1, v1);
+    geo.translate(0, -8, 0);
+    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }));
+    m.position.set(0, 0, 2.3);
+    this.capeMesh = m; this.backAnchor.add(m);
+  }
+  view(name) {
+    const p = this.static ? { front: [-26, 34, -46], back: [24, 30, 50], side: [-55, 30, 6] }[name] : { front: [-34, 36, -62], back: [32, 32, 66], side: [-72, 32, 8] }[name];
+    if (p) { this.cam.position.set(...p); this.ctl?.update(); }
+  }
+  snap() { this.frame(); return this.canvas.toDataURL('image/png'); }
+  dispose() { this.dead = true; this.r.dispose(); }
+}

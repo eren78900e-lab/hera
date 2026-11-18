@@ -1,7 +1,7 @@
 {
-  "version": "1.0.5",
-  "date": "2026-11-18T13:23:39.4040701Z",
-  "notes": "Otomatik g\u00FCncelleme a\u00E7\u0131ld\u0131",
+  "version": "1.1.1",
+  "date": "2026-11-18T17:20:21.8143154Z",
+  "notes": "Kozmetik dolab\u0131: Hera/Kral/Buz tac\u0131, Muhaf\u0131z Mi\u011Fferi, \u015Feytan boynuzlar\u0131, hale, melek ve \u015Feytan kanatlar\u0131, kuma\u015F fizikli HD pelerinler. Hera ESC men\u00FCs\u00FC, F5\u0027te kendi ismin, sohbet arama \u002B s\u0131n\u0131rs\u0131z sohbet ge\u00E7mi\u015Fi, sar\u0131 Hera pencere ba\u015Fl\u0131\u011F\u0131 ve ikonu, net ta\u00E7 rozeti, launcher\u0027da hesab\u0131n\u0131n skiniyle 3D kozmetik \u00F6nizleme.",
   "min": "",
   "files": [
     {
@@ -21,17 +21,17 @@
     },
     {
       "p": "Hera.deps.json",
-      "h": "7a16788389c6ded82ffbe3054e2a269d5c12ce530d5ab9c71a689c4475765cb0",
+      "h": "67bacb97b9bacd51b93ac78f5431fc006770c2412e1a2970b76bbc87513c456c",
       "s": 37967
     },
     {
       "p": "Hera.dll",
-      "h": "a79a598bf175c1901af611721d3e94fca7a2fe20b53fbc4ad1d4e0b160879761",
-      "s": 512000
+      "h": "085ae7dcbcbe1d257607c53ce6098af35fc05e5178c8ed0ae9a16bb75176cc50",
+      "s": 512512
     },
     {
       "p": "Hera.exe",
-      "h": "09f1cb9ff08b79d7833fe4c5209f327e792e39311820bb50b28bfc7c455dad7c",
+      "h": "943a941bb28cc6e23818d99a9ddf53510718885f7a514ec0f6163a8cabb50d81",
       "s": 296448
     },
     {
@@ -1206,8 +1206,8 @@
     },
     {
       "p": "mods/hera-1.21.11.jar",
-      "h": "da56b697be6c809e4a1436026735c1f097fe9b96616095b5bb58d41bacdfebfd",
-      "s": 560500
+      "h": "a5c0b8ff8b082138b65ed674d510303900efbc9b5ed0ab2a90929fe32f0de548",
+      "s": 1331558
     },
     {
       "p": "mscordaccore.dll",
@@ -1251,23 +1251,98 @@
     },
     {
       "p": "ui/app.css",
-      "h": "b25ddd9ceb6b1ce032b02959e27939d8a4cb6fbe4a1abe974e77c00756df83e5",
-      "s": 41831
+      "h": "bd7120d43aca503ea4c84d21a130e522d6e9e07cf274a8998fed2ddcc63a716d",
+      "s": 43730
     },
     {
       "p": "ui/app.js",
-      "h": "7baa5e93256ec4ebfd6c3787598a32b10865b972fab34de1734367388e2270f1",
-      "s": 57946
+      "h": "ed622a8bef83eca6b3ae99e4d985a0aa95231d563f6106817519557ccfc8bad0",
+      "s": 61940
     },
     {
       "p": "ui/badge.png",
-      "h": "17086bbc9f57fe42d5e783f8207d342de763a2f0f45b9b7a1afd22b1c321cbc2",
-      "s": 525
+      "h": "1c3bfb9521a661484099d725fec718c44bf62d4146b737ba8e0972a9a8d39f09",
+      "s": 137
+    },
+    {
+      "p": "ui/cosmetics/boynuz_seytan.json",
+      "h": "43070b8ac46ab49feb769808104927c3523908089f1d0d94373d924fe75716f6",
+      "s": 108529
+    },
+    {
+      "p": "ui/cosmetics/catalog.json",
+      "h": "0e950ba3591db5bc360f6d7249a243ce5049f7e17e295f46e560a8dad76b191e",
+      "s": 2126
+    },
+    {
+      "p": "ui/cosmetics/hale.json",
+      "h": "319d72cc85ce0e8db75a9532f3634fcf1d0931302a837bcb6168f439d1b4ba6d",
+      "s": 59857
+    },
+    {
+      "p": "ui/cosmetics/kanat_melek.json",
+      "h": "bc915ef07f0827d4f7958d6da886b2aced6ccbe2dc10b91adc2189d26e2cfc04",
+      "s": 786833
+    },
+    {
+      "p": "ui/cosmetics/kanat_seytan.json",
+      "h": "5afc244f4b1113bee4effc4a246788b131afb04e7256fb4258d0189d02bc0373",
+      "s": 260356
+    },
+    {
+      "p": "ui/cosmetics/kask_muhafiz.json",
+      "h": "0b7282a8ca9b4fd0505f79f5e2ef3f243b3d120953100a5a3ad7211c57755b98",
+      "s": 1088850
+    },
+    {
+      "p": "ui/cosmetics/pel_ates.png",
+      "h": "d993c1b2747d9ba2340ef4d20c42fae5431f742779af526be756a10800e6352b",
+      "s": 35471
+    },
+    {
+      "p": "ui/cosmetics/pel_buz.png",
+      "h": "a873c6a80881836ee00ca71bf0d2f9f6cd749f1c2e36cecb9666e45fa249874c",
+      "s": 10502
+    },
+    {
+      "p": "ui/cosmetics/pel_gece.png",
+      "h": "89eb58df7e8ff957a957655ab1d52abb35ed3e60eef31f0cb3ee9087b47c62bb",
+      "s": 6464
+    },
+    {
+      "p": "ui/cosmetics/pel_hera.png",
+      "h": "6c1bf1b26ac7ecc7591264abbf2b42e33b91bd53d65387c15432f1c74fa65855",
+      "s": 5713
+    },
+    {
+      "p": "ui/cosmetics/tac_altin.json",
+      "h": "18bc012232c7d502d500f828427a6aac60d7fd5d5b6b8a647e15519125a619dd",
+      "s": 539209
+    },
+    {
+      "p": "ui/cosmetics/tac_buz.json",
+      "h": "f2997379c4f6594a4a7fd1a660ac396cf50a8af4af4ca09c7269e70d2904d909",
+      "s": 241595
+    },
+    {
+      "p": "ui/cosmetics/tac_hera.json",
+      "h": "8789ca4ab6ab4e7656b5c86d626147d63ba3e28d9e6e8a96a9b4cf4ed4da12b0",
+      "s": 429026
+    },
+    {
+      "p": "ui/cosprev.html",
+      "h": "3b515b867bd41f21cb7964ab47940b682985910c5741f2dd0dd1f31b964c956f",
+      "s": 1480
+    },
+    {
+      "p": "ui/cosview.js",
+      "h": "4209e03fbf5c5c5d4641579375d3281f4f277ca48363d64ae47634626ed2e303",
+      "s": 10771
     },
     {
       "p": "ui/index.html",
-      "h": "0ce839c7b9078d7237440fd8b0207eca688e6d73644b93e982b28328eb079884",
-      "s": 15371
+      "h": "8f84dc984dfdc749eb9d63adc3673c0213f995bbf2a330ae5f79bdc0543b7065",
+      "s": 16581
     },
     {
       "p": "ui/inter-ext.woff2",
@@ -1300,6 +1375,16 @@
       "s": 32292
     },
     {
+      "p": "ui/vendor/OrbitControls.js",
+      "h": "80efaadea4f8a636a65fb0bd08bfef62f3d93a0bb94e2e7500f23176c5c07f4e",
+      "s": 32134
+    },
+    {
+      "p": "ui/vendor/three.module.min.js",
+      "h": "08fd7545d13d2c7fb65ab691530a802dafefd638596501854f267d0fb13c39e7",
+      "s": 691648
+    },
+    {
       "p": "update-url.txt",
       "h": "aa3fd0c265d9c630facf67b93cead8b880972e5163e8859b9676fe31e974f22b",
       "s": 46
@@ -1311,7 +1396,7 @@
     },
     {
       "p": "version.txt",
-      "h": "8c54bfab7f1ae9bd1a7148eae41e7b0a8f4ad3726e0cac70f823a2d45db9e60c",
+      "h": "cc52f678848b814373757b460383bf61960e4943c203735adde0a350b3e50989",
       "s": 6
     },
     {
@@ -1320,5 +1405,7 @@
       "s": 1955624
     }
   ],
-  "remove": []
+  "remove": [
+    "ui/cosmetics/kask_sovalye.json"
+  ]
 }

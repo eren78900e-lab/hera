@@ -1,0 +1,100 @@
+{
+ "items": [
+  {
+   "id": "tac_hera",
+   "name": "Hera Tacı",
+   "slot": "kafa",
+   "desc": "Hera logosundaki taç: altın, beş uçlu, ortada parlayan elmas.",
+   "anim": null,
+   "tris": 10160
+  },
+  {
+   "id": "tac_altin",
+   "name": "Kral Tacı",
+   "slot": "kafa",
+   "desc": "İncili altın taç, yakut ve safir taşlar, kadife iç.",
+   "anim": null,
+   "tris": 12332
+  },
+  {
+   "id": "tac_buz",
+   "name": "Buz Tacı",
+   "slot": "kafa",
+   "desc": "Gümüş bant ve ışıldayan buz kristalleri.",
+   "anim": null,
+   "tris": 4940
+  },
+  {
+   "id": "kask_sovalye",
+   "name": "Şövalye Kaskı",
+   "slot": "kafa",
+   "desc": "Parlak çelik kask, altın kenar, kırmızı tüy.",
+   "anim": null,
+   "tris": 11196
+  },
+  {
+   "id": "boynuz_seytan",
+   "name": "Şeytan Boynuzları",
+   "slot": "kafa",
+   "desc": "Kıvrık, boğumlu kızıl boynuzlar.",
+   "anim": null,
+   "tris": 2752
+  },
+  {
+   "id": "hale",
+   "name": "Melek Halesi",
+   "slot": "kafa",
+   "desc": "Başının üstünde süzülen parlak hale.",
+   "anim": "bob",
+   "tris": 1536
+  },
+  {
+   "id": "kanat_melek",
+   "name": "Melek Kanatları",
+   "slot": "sirt",
+   "desc": "Kat kat beyaz tüylü kanatlar.",
+   "anim": "wings",
+   "tris": 18000
+  },
+  {
+   "id": "kanat_seytan",
+   "name": "Şeytan Kanatları",
+   "slot": "sirt",
+   "desc": "Kemikli, zarlı kızıl kanatlar.",
+   "anim": "wings",
+   "tris": 6192
+  },
+  {
+   "id": "pel_hera",
+   "name": "Hera Pelerini",
+   "slot": "pelerin",
+   "desc": "Siyah-altın, taç amblemli.",
+   "anim": null,
+   "tris": 0
+  },
+  {
+   "id": "pel_ates",
+   "name": "Ateş Pelerini",
+   "slot": "pelerin",
+   "desc": "Alevli kızıl-turuncu.",
+   "anim": null,
+   "tris": 0
+  },
+  {
+   "id": "pel_gece",
+   "name": "Gece Pelerini",
+   "slot": "pelerin",
+   "desc": "Yıldızlı mor gece ve hilal.",
+   "anim": null,
+   "tris": 0
+  },
+  {
+   "id": "pel_buz",
+   "name": "Buz Pelerini",
+   "slot": "pelerin",
+   "desc": "Buz mavisi, kar tanesi.",
+   "anim": null,
+   "tris": 0
+  }
+ ]
+}
