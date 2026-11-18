@@ -1,0 +1,811 @@
+'use strict';
+/* ================================================================ kopru */
+const host = window.chrome && window.chrome.webview;
+let ridSeq = 0;
+const pending = new Map();
+const listeners = {};
+function call(cmd, data = {}) {
+  return new Promise((res, rej) => {
+    const rid = ++ridSeq;
+    pending.set(rid, { res, rej });
+    post({ cmd, rid, ...data });
+  });
+}
+function post(o) { if (host) host.postMessage(o); else mockHost(o); }
+function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
+function onMsg(m) {
+  if (m.ev === 'reply') {
+    const p = pending.get(m.rid); if (!p) return;
+    pending.delete(m.rid);
+    m.ok ? p.res(m.data) : p.rej(new Error(m.error || 'Hata'));
+    return;
+  }
+  (listeners[m.ev] || []).forEach(f => f(m));
+}
+if (host) host.addEventListener('message', e => onMsg(e.data));
+
+/* ================================================================ yardimcilar */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ic = (n, cls = '') => `<svg class="i ${cls}"><use href="#i-${n}"/></svg>`;
+const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.', ',') + ' Mn' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace('.', ',') + ' B' : String(n);
+const fmtMB = b => (b / 1048576).toFixed(b > 1e8 ? 0 : 1).replace('.', ',') + ' MB';
+function ago(ms) {
+  if (!ms) return 'Hiç';
+  const s = (Date.now() - ms) / 1000;
+  if (s < 60) return 'Az önce';
+  if (s < 3600) return Math.floor(s / 60) + ' dk önce';
+  if (s < 86400) return Math.floor(s / 3600) + ' saat önce';
+  if (s < 86400 * 30) return Math.floor(s / 86400) + ' gün önce';
+  return new Date(ms).toLocaleDateString('tr-TR');
+}
+function dur(ms) {
+  const m = Math.floor((ms || 0) / 60000);
+  if (m < 60) return m + ' dk';
+  return Math.floor(m / 60) + ' sa ' + (m % 60) + ' dk';
+}
+function toast(kind, text, ms = 4200) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind;
+  t.innerHTML = ic(kind === 'ok' ? 'check' : kind === 'error' ? 'warn' : 'info') + `<div>${esc(text)}</div>`;
+  $('#toasts').appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
+}
+function head(name, size = 64) { return `https://mc-heads.net/avatar/${encodeURIComponent(name || 'MHF_Steve')}/${size}`; }
+const STEVE = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect width="8" height="8" fill="#6b4a2f"/><rect y="2" width="8" height="6" fill="#b58a6a"/><rect x="1" y="4" width="2" height="1" fill="#fff"/><rect x="2" y="4" width="1" height="1" fill="#4a3a8a"/><rect x="5" y="4" width="2" height="1" fill="#fff"/><rect x="5" y="4" width="1" height="1" fill="#4a3a8a"/><rect x="3" y="6" width="2" height="1" fill="#6b4a2f"/></svg>');
+
+const ICONS = ['crown', 'sword', 'shield', 'pick', 'grass', 'gem', 'fire', 'star', 'rocket', 'bolt'];
+function picon(p, cls = 'picon') {
+  const i = p && p.icon || 'crown';
+  return `<div class="${cls}">${i === 'crown' ? '<img src="logo.png" alt="">' : ic(i)}</div>`;
+}
+const LOADERS = { vanilla: 'Vanilla', fabric: 'Fabric', legacyfabric: 'Legacy Fabric', quilt: 'Quilt' };
+
+/* ================================================================ durum */
+let S = null;          // C# durumu
+let page = 'home';
+let gameState = 'idle';
+let versionsData = null;
+const prof = () => S && (S.profiles.find(p => p.id === S.settings.selectedProfile) || S.profiles[0]);
+const acct = () => S && S.accounts.find(a => a.id === S.settings.selectedAccount);
+
+on('state', m => {
+  S = m;
+  gameState = m.game || gameState;
+  document.documentElement.dataset.accent = S.settings.accent || 'gold';
+  document.body.classList.toggle('noanim', S.settings.animations === false);
+  $('#verTxt').textContent = 'v' + S.ver;
+  renderAll();
+  if (!$('#boot').classList.contains('done')) setTimeout(() => $('#boot').classList.add('done'), 350);
+});
+on('toast', m => toast(m.kind, m.text));
+on('win', m => { $('[data-win=max] use').setAttribute('href', m.max ? '#i-copy' : '#i-max'); });
+
+function renderAll() {
+  renderSide(); renderHome();
+  if (page === 'profiles') renderProfiles();
+  if (page === 'settings') renderSettings();
+  if (page === 'pvp') renderPvp();
+  if (page === 'shop') renderShopHeader();
+}
+
+/* ================================================================ gezinme + pencere */
+function go(p) {
+  page = p;
+  $$('#side nav button').forEach(b => b.classList.toggle('on', b.dataset.go === p));
+  $$('.page').forEach(s => s.classList.toggle('on', s.id === p));
+  if (p === 'profiles') renderProfiles();
+  if (p === 'settings') renderSettings();
+  if (p === 'pvp') renderPvp();
+  if (p === 'shop') openShop();
+}
+$$('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+$$('[data-win]').forEach(b => b.onclick = () => post({ cmd: 'win', a: b.dataset.win }));
+$('#drag').addEventListener('mousedown', e => { if (e.button === 0) post({ cmd: 'win', a: 'drag' }); });
+$('#drag').addEventListener('dblclick', () => post({ cmd: 'win', a: 'max' }));
+
+/* ================================================================ yan menu: hesap */
+function renderSide() {
+  const a = acct();
+  $('#acctBtn').innerHTML = a
+    ? `<img src="${head(a.name, 64)}" onerror="this.src='${STEVE}'"><span class="dot"></span><span class="tip">${esc(a.name)} · Hesaplar</span>`
+    : `<div class="noacc">${ic('user')}</div><span class="tip">Hesap ekle</span>`;
+}
+$('#acctBtn').onclick = () => accountsModal();
+
+/* ================================================================ ANA SAYFA */
+function renderHome() {
+  const p = prof(); if (!p) return;
+  $('#psel').innerHTML = `${picon(p)}<div style="min-width:0"><div class="nm">${esc(p.name)}</div>
+    <div class="sub">${esc(p.mc)} · ${LOADERS[p.loader] || p.loader}${p.heraSupported && p.heraMod ? ' · <span class="grad" style="font-weight:600">Hera</span>' : ''}</div></div>${ic('chev', 'chev')}`;
+  const a = acct();
+  $('#dockMeta').innerHTML = `<span>${ic('user')}${a ? esc(a.name) : 'Hesap yok'}</span><span>${ic('clock')}${dur(p.playMs)} oynandı</span><span>${ic('cpu')}${((p.ramMb || S.settings.ramMb || S.autoRam) / 1024).toFixed(1).replace('.', ',')} GB RAM</span>`;
+  setPlay();
+}
+$('#psel').onclick = e => profilePop(e.currentTarget, id => post({ cmd: 'profileSelect', id }));
+
+function profilePop(anchor, pick, filter) {
+  closePop();
+  const r = anchor.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'pop';
+  const list = S.profiles.filter(filter || (() => true));
+  el.innerHTML = list.map(p => `<div class="it ${p.id === S.settings.selectedProfile ? 'on' : ''}" data-id="${p.id}">${picon(p)}<div><b>${esc(p.name)}</b><small>${esc(p.mc)} · ${LOADERS[p.loader]}</small></div></div>`).join('')
+    + `<div class="sep"></div><div class="it" data-new="1"><div class="picon">${ic('plus')}</div><div><b>Yeni profil</b><small>Herhangi bir sürüm</small></div></div>`;
+  document.body.appendChild(el);
+  const h = el.offsetHeight;
+  el.style.left = r.left + 'px';
+  el.style.top = (r.top - h - 10 > 10 ? r.top - h - 10 : r.bottom + 8) + 'px';
+  el.onclick = e => {
+    const it = e.target.closest('.it'); if (!it) return;
+    closePop();
+    if (it.dataset.new) profileModal(); else pick(it.dataset.id);
+  };
+  setTimeout(() => document.addEventListener('mousedown', popAway), 0);
+}
+function popAway(e) { if (!e.target.closest('.pop')) closePop(); }
+function closePop() { $$('.pop').forEach(p => p.remove()); document.removeEventListener('mousedown', popAway); }
+
+/* oyna dugmesi */
+let prog = { stage: 'Hazır', done: 0, total: 0, bytes: 0 }, lastBytes = 0, lastT = 0, speed = 0;
+function setPlay() {
+  const b = $('#playBtn');
+  b.classList.toggle('busy', gameState === 'preparing');
+  b.classList.toggle('running', gameState === 'running');
+  if (gameState === 'preparing') b.innerHTML = `<span class="spin"></span><span>İPTAL</span>`;
+  else if (gameState === 'running') b.innerHTML = `${ic('check')}<span>OYUNDA<small>Konsolu aç</small></span>`;
+  else b.innerHTML = `${ic('play')}<span>OYNA</span>`;
+  const bar = $('#progBar');
+  if (gameState === 'idle') {
+    $('#progStage').textContent = acct() ? 'Hazır — oyna.crafthera.com' : 'Önce bir hesap ekle';
+    $('#progPct').textContent = '';
+    bar.classList.remove('ind'); bar.firstElementChild.style.width = '0';
+  } else if (gameState === 'running') {
+    $('#progStage').textContent = 'Oyun çalışıyor';
+    $('#progPct').textContent = '';
+    bar.classList.remove('ind'); bar.firstElementChild.style.width = '100%';
+  }
+}
+on('game', m => {
+  gameState = m.state;
+  if (S) S.game = m.state;
+  if (m.state === 'preparing') { prog = { stage: 'Hazırlanıyor' }; lastBytes = 0; }
+  setPlay();
+  if (m.state === 'running') { $('#conPre').innerHTML = ''; if (S.settings.consoleOnLaunch) $('#console').classList.add('on'); }
+});
+on('progress', m => {
+  if (gameState !== 'preparing') return;
+  const now = performance.now();
+  if (m.stage !== prog.stage) { lastBytes = 0; lastT = now; speed = 0; }
+  if (m.bytes && now - lastT > 400) { speed = (m.bytes - lastBytes) / ((now - lastT) / 1000); lastBytes = m.bytes; lastT = now; }
+  prog = m;
+  $('#progStage').textContent = m.stage + (m.detail ? ' · ' + m.detail : '');
+  const bar = $('#progBar');
+  if (m.total > 0) {
+    bar.classList.remove('ind');
+    const pc = Math.min(100, m.done / m.total * 100);
+    bar.firstElementChild.style.width = pc + '%';
+    $('#progPct').textContent = `${m.done}/${m.total}` + (m.bytes ? ` · ${fmtMB(m.bytes)}` + (speed > 0 ? ` · ${fmtMB(speed)}/sn` : '') : '');
+  } else { bar.classList.add('ind'); $('#progPct').textContent = ''; }
+});
+$('#playBtn').onclick = async () => {
+  if (gameState === 'preparing') { post({ cmd: 'cancel' }); return; }
+  if (gameState === 'running') { openConsole(); return; }
+  if (!acct()) { accountsModal(); return; }
+  try { await call('play', { profile: S.settings.selectedProfile }); }
+  catch (e) { toast('error', e.message, 7000); }
+};
+
+/* sunucu */
+function motdHtml(d) {
+  const COL = { black: '#000', dark_blue: '#0000AA', dark_green: '#00AA00', dark_aqua: '#00AAAA', dark_red: '#AA0000', dark_purple: '#AA00AA', gold: '#FFAA00', gray: '#AAAAAA', dark_gray: '#555555', blue: '#5555FF', green: '#55FF55', aqua: '#55FFFF', red: '#FF5555', light_purple: '#FF55FF', yellow: '#FFFF55', white: '#FFFFFF' };
+  const CODE = '0123456789abcdef'; const CN = Object.keys(COL);
+  let out = '';
+  function legacy(s, base) {
+    let col = base || '#AAAAAA', b = false;
+    const parts = String(s).split('§');
+    out += `<span style="color:${col}">${esc(parts[0])}</span>`;
+    for (let i = 1; i < parts.length; i++) {
+      const c = parts[i][0], t = parts[i].slice(1);
+      const k = CODE.indexOf((c || '').toLowerCase());
+      if (k >= 0) { col = COL[CN[k]]; b = false; }
+      else if (c === 'l') b = true; else if (c === 'r') { col = '#AAAAAA'; b = false; }
+      out += `<span style="color:${col};${b ? 'font-weight:700' : ''}">${esc(t)}</span>`;
+    }
+  }
+  function walk(n, inh) {
+    if (typeof n === 'string') { legacy(n, inh.color); return; }
+    if (!n) return;
+    const st = { color: n.color ? (COL[n.color] || n.color) : inh.color, bold: n.bold ?? inh.bold };
+    if (n.text) { if (n.text.includes('§')) legacy(n.text, st.color); else out += `<span style="color:${st.color || '#AAAAAA'};${st.bold ? 'font-weight:700' : ''}">${esc(n.text)}</span>`; }
+    (n.extra || []).forEach(x => walk(x, st));
+  }
+  walk(d, {});
+  return out;
+}
+async function pingServer() {
+  const btn = $('#srvRefresh'); btn.classList.add('ld');
+  try {
+    const r = await call('server');
+    $('#srvOnline').textContent = `${(r.players?.online ?? 0).toLocaleString('tr-TR')}`;
+    $('#srvDot').classList.remove('off');
+    $('#srvPing').textContent = r.ping >= 0 ? r.ping + ' ms' : '—';
+    $('#srvMotd').innerHTML = motdHtml(r.description) || 'CraftHera';
+    if (r.favicon) $('#srvIco').src = r.favicon;
+  } catch (e) {
+    $('#srvOnline').textContent = 'Kapalı';
+    $('#srvDot').classList.add('off');
+    $('#srvPing').textContent = '—';
+    $('#srvMotd').textContent = 'Sunucuya ulaşılamadı.';
+  }
+  btn.classList.remove('ld');
+}
+$('#srvRefresh').onclick = pingServer;
+$('#copyIp').onclick = () => { navigator.clipboard.writeText('oyna.crafthera.com'); toast('ok', 'IP kopyalandı'); };
+
+/* ================================================================ PROFILLER */
+function renderProfiles() {
+  if (!S) return;
+  const sel = S.settings.selectedProfile;
+  $('#pgrid').innerHTML = S.profiles.map(p => `
+    <div class="card pcard ${p.id === sel ? 'sel' : ''}" data-id="${p.id}">
+      <div class="glow"></div>
+      <div class="top">${picon(p)}<div style="min-width:0"><h3>${esc(p.name)}</h3>
+        <div class="bd"><span class="badge">${esc(p.mc)}</span><span class="badge">${LOADERS[p.loader]}</span>
+        ${p.heraSupported && p.heraMod ? `<span class="badge gold">${ic('crown')}Hera</span>` : ''}${p.fpsPack && p.loader !== 'vanilla' ? `<span class="badge green">${ic('bolt')}FPS</span>` : ''}</div></div></div>
+      <div class="info"><div>Son oynama<b>${ago(p.lastPlayed)}</b></div><div>Toplam süre<b>${dur(p.playMs)}</b></div></div>
+      <div class="act">
+        <button class="btn pri sm" data-a="play">${ic('play')}Oyna</button>
+        <button class="btn sm" data-a="edit" title="Düzenle">${ic('edit')}</button>
+        <button class="btn sm" data-a="folder" title="Klasör">${ic('folder')}</button>
+        ${p.locked ? '' : `<button class="btn sm danger" data-a="del" title="Sil">${ic('trash')}</button>`}
+      </div>
+    </div>`).join('') + `<div class="card pcard new" id="pnew"><div><div class="plus">${ic('plus')}</div><b>Yeni profil</b><div style="font-size:12.5px;margin-top:3px">1.8.9 → en yeni sürüm</div></div></div>`;
+  $('#pnew').onclick = () => profileModal();
+  $$('#pgrid .pcard[data-id]').forEach(c => c.onclick = async e => {
+    const id = c.dataset.id, a = e.target.closest('[data-a]')?.dataset.a;
+    const p = S.profiles.find(x => x.id === id);
+    if (a === 'edit') return profileModal(p);
+    if (a === 'folder') return post({ cmd: 'openFolder', path: id });
+    if (a === 'del') return confirmModal('Profili sil', `<b>${esc(p.name)}</b> profili silinsin mi? Dünyalar, modlar ve ayarlar da silinir.`, 'Sil', async () => { await call('profileDelete', { id, files: true }); toast('ok', 'Profil silindi'); });
+    post({ cmd: 'profileSelect', id });
+    if (a === 'play') { go('home'); setTimeout(() => $('#playBtn').click(), 250); }
+  });
+}
+$('#newProf').onclick = () => profileModal();
+
+async function loadVersions() {
+  if (!versionsData) versionsData = await call('versions');
+  return versionsData;
+}
+
+function profileModal(p) {
+  const isNew = !p;
+  const d = p ? { ...p } : { name: '', mc: '1.21.11', loader: 'fabric', icon: 'sword', fpsPack: true, heraMod: true, autoJoin: true, ramMb: 0, jvmArgs: '' };
+  let filt = { q: '', snap: false, old: false };
+  const m = modal(`
+    <div class="mh"><h2>${isNew ? 'Yeni profil' : 'Profili düzenle'}</h2><button class="iconbtn" data-x>${ic('x')}</button></div>
+    <div class="mb">
+      <div class="row2">
+        <div><label class="f">Profil adı</label><input class="input" id="pfName" maxlength="40" placeholder="Örn. 1.8.9 PvP" value="${esc(d.name)}"></div>
+        <div><label class="f">Simge</label><div class="icons" id="pfIcons">${ICONS.map(i => `<button data-i="${i}" class="${d.icon === i ? 'on' : ''}">${i === 'crown' ? '<img src="logo.png">' : ic(i)}</button>`).join('')}</div></div>
+      </div>
+      <div>
+        <label class="f">Sürüm <span id="pfVerSel" style="color:var(--a1);text-transform:none;letter-spacing:0;margin-left:6px"></span></label>
+        <div class="vtools">
+          <div class="search"><svg class="i"><use href="#i-search"/></svg><input class="input" id="pfQ" placeholder="Sürüm ara (1.8.9, 1.20…)"></div>
+          <label class="chk"><span class="tog" id="pfSnap"></span>Snapshot</label>
+          <label class="chk"><span class="tog" id="pfOld"></span>Alpha/Beta</label>
+        </div>
+        <div class="vlist" id="pfList"><div class="empty"><span class="spin"></span></div></div>
+      </div>
+      <div><label class="f">Mod yükleyici</label><div class="seg" id="pfLoader">
+        <button data-l="vanilla">Vanilla</button><button data-l="fabric">Fabric</button><button data-l="legacyfabric">Legacy Fabric</button><button data-l="quilt">Quilt</button></div>
+        <div class="note" id="pfLNote" style="margin-top:10px;display:none"></div></div>
+      <div class="opt" id="pfFps"><div class="ic">${ic('bolt')}</div><div class="tx"><b>Hera FPS paketi</b><small>Sodium, Lithium, FerriteCore, EntityCulling, ImmediatelyFast… (uyumlu olanlar Modrinth'ten)</small></div><span class="tog"></span></div>
+      <div class="opt" id="pfHera"><div class="ic">${ic('crown')}</div><div class="tx"><b>Hera modu</b><small id="pfHeraTx">Taç rozeti + PvP HUD + zoom</small></div><span class="tog"></span></div>
+      <div class="opt" id="pfJoin"><div class="ic">${ic('rocket')}</div><div class="tx"><b>Açılınca CraftHera'ya bağlan</b><small>Oyun açılır açılmaz oyna.crafthera.com</small></div><span class="tog"></span></div>
+      <div class="row2">
+        <div><label class="f">RAM (bu profil)</label><select class="input" id="pfRam" style="width:100%">
+          <option value="0">Genel ayarı kullan</option>${[2048, 3072, 4096, 5120, 6144, 8192, 10240, 12288].map(v => `<option value="${v}">${v / 1024} GB</option>`).join('')}</select></div>
+        <div><label class="f">Ek JVM argümanları</label><input class="input" id="pfJvm" placeholder="-Dornek=1" value="${esc(d.jvmArgs || '')}"></div>
+      </div>
+    </div>
+    <div class="mf"><button class="btn ghost" data-x>Vazgeç</button><button class="btn pri" id="pfSave">${ic('check')}${isNew ? 'Oluştur' : 'Kaydet'}</button></div>`);
+  $('#pfRam', m).value = String(d.ramMb || 0);
+  const tog = (id, key) => { const el = $(id, m); const t = $('.tog', el) || el; const upd = () => t.classList.toggle('on', !!d[key]); upd(); el.onclick = () => { d[key] = !d[key]; upd(); refresh(); }; };
+  tog('#pfFps', 'fpsPack'); tog('#pfHera', 'heraMod'); tog('#pfJoin', 'autoJoin');
+  $('#pfSnap', m).onclick = e => { filt.snap = !filt.snap; e.currentTarget.classList.toggle('on', filt.snap); list(); };
+  $('#pfOld', m).onclick = e => { filt.old = !filt.old; e.currentTarget.classList.toggle('on', filt.old); list(); };
+  $('#pfQ', m).oninput = e => { filt.q = e.target.value.trim(); list(); };
+  $$('#pfIcons button', m).forEach(b => b.onclick = () => { d.icon = b.dataset.i; $$('#pfIcons button', m).forEach(x => x.classList.toggle('on', x === b)); });
+  $$('#pfLoader button', m).forEach(b => b.onclick = () => { d.loader = b.dataset.l; refresh(); });
+  let V = null;
+  function list() {
+    if (!V) return;
+    const q = filt.q.toLowerCase();
+    const rows = V.versions.filter(v => (v.type === 'release' || (filt.snap && v.type === 'snapshot') || (filt.old && v.type.startsWith('old'))) && (!q || v.id.toLowerCase().includes(q))).slice(0, 400);
+    $('#pfList', m).innerHTML = rows.map(v => {
+      const tag = v.id === '1.21.11' ? `<span class="badge gold">${ic('crown')}CraftHera önerilen</span>` : v.id === '1.8.9' ? `<span class="badge">PvP klasik</span>` : '';
+      return `<div class="vrow ${v.id === d.mc ? 'on' : ''}" data-v="${esc(v.id)}">${esc(v.id)} ${tag}<span class="ty">${v.type === 'release' ? new Date(v.release).getFullYear() : v.type}</span></div>`;
+    }).join('') || '<div class="empty">Sürüm bulunamadı</div>';
+    $$('#pfList .vrow', m).forEach(r => r.onclick = () => { d.mc = r.dataset.v; $$('#pfList .vrow', m).forEach(x => x.classList.toggle('on', x === r)); refresh(); });
+    const on = $('#pfList .vrow.on', m), L = $('#pfList', m); if (on && !list.scrolled) { L.scrollTop = on.offsetTop - L.clientHeight / 2 + on.offsetHeight / 2; list.scrolled = true; }
+  }
+  function refresh() {
+    $('#pfVerSel', m).textContent = d.mc;
+    const ok = { vanilla: true, fabric: V ? V.fabric.includes(d.mc) : true, legacyfabric: V ? V.legacyfabric.includes(d.mc) : true, quilt: V ? V.quilt.includes(d.mc) : true };
+    if (!ok[d.loader]) d.loader = ok.fabric ? 'fabric' : ok.legacyfabric ? 'legacyfabric' : 'vanilla';
+    $$('#pfLoader button', m).forEach(b => { b.classList.toggle('on', b.dataset.l === d.loader); b.disabled = !ok[b.dataset.l]; });
+    const note = $('#pfLNote', m);
+    if (d.loader === 'vanilla') { note.style.display = 'flex'; note.innerHTML = ic('info') + 'Vanilla profilde mod yüklenemez; FPS paketi ve Hera modu çalışmaz.'; }
+    else if (!ok.fabric && ok.legacyfabric) { note.style.display = 'flex'; note.innerHTML = ic('info') + 'Bu eski sürüm için Legacy Fabric kullanılır.'; }
+    else note.style.display = 'none';
+    $('#pfFps', m).classList.toggle('dis', d.loader === 'vanilla');
+    const heraOk = (d.loader === 'fabric' || d.loader === 'quilt') && (S.heraMods || []).includes(d.mc);
+    $('#pfHera', m).classList.toggle('dis', !heraOk);
+    $('#pfHeraTx', m).textContent = heraOk ? 'Taç rozeti + PvP HUD + zoom' : `Şimdilik yalnız ${(S.heraMods || []).join(', ')} Fabric sürümünde`;
+  }
+  refresh();
+  loadVersions().then(v => { V = v; list(); refresh(); }).catch(e => { $('#pfList', m).innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+  $('#pfSave', m).onclick = async () => {
+    d.name = $('#pfName', m).value.trim() || `${d.mc} ${LOADERS[d.loader]}`;
+    d.ramMb = +$('#pfRam', m).value; d.jvmArgs = $('#pfJvm', m).value;
+    try { await call('profileSave', { p: d }); closeModal(m); toast('ok', isNew ? 'Profil oluşturuldu — Oyna ile ilk kurulum başlar' : 'Profil kaydedildi'); }
+    catch (e) { toast('error', e.message); }
+  };
+  setTimeout(() => $('#pfName', m).focus(), 50);
+}
+
+/* ================================================================ modal yardimcilari */
+function modal(html, cls = '') {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal ${cls}">${html}</div>`;
+  document.body.appendChild(bg);
+  bg.addEventListener('mousedown', e => { if (e.target === bg) closeModal(bg); });
+  $$('[data-x]', bg).forEach(b => b.onclick = () => closeModal(bg));
+  return bg;
+}
+function closeModal(m) { if (m && m.onclose) m.onclose(); m?.remove(); }
+function confirmModal(title, body, okText, fn) {
+  const m = modal(`<div class="mh"><h2>${title}</h2></div><div class="mb"><div>${body}</div></div>
+    <div class="mf"><button class="btn ghost" data-x>Vazgeç</button><button class="btn pri" id="cfOk">${okText}</button></div>`, 'sm');
+  $('#cfOk', m).onclick = async () => { try { await fn(); closeModal(m); } catch (e) { toast('error', e.message); } };
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { const ms = $$('.modal-bg'); if (ms.length) closeModal(ms[ms.length - 1]); else if ($('#console').classList.contains('on')) $('#console').classList.remove('on'); closePop(); }
+});
+
+/* ================================================================ HESAPLAR */
+function accountsModal() {
+  const m = modal(`
+    <div class="mh"><h2>Hesaplar</h2><button class="iconbtn" data-x>${ic('x')}</button></div>
+    <div class="mb">
+      <div id="accList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div><label class="f">Korsan hesap ekle</label>
+        <div style="display:flex;gap:8px"><input class="input" id="accName" maxlength="16" placeholder="Oyuncu adı (3-16 karakter)"><button class="btn pri" id="accAdd">${ic('plus')}Ekle</button></div>
+        <div class="note" style="margin-top:9px">${ic('info')}CraftHera korsan girişe açık; sunucuda /login ile kendi şifreni kullanırsın.</div></div>
+      <button class="btn" id="accMs" style="height:46px">${ic('ms')}Microsoft hesabıyla giriş (premium)</button>
+    </div>`, 'sm');
+  function draw() {
+    const sel = S.settings.selectedAccount;
+    $('#accList', m).innerHTML = S.accounts.length ? S.accounts.map(a => `
+      <div class="acc ${a.id === sel ? 'on' : ''}" data-id="${a.id}"><img src="${head(a.name, 64)}" onerror="this.src='${STEVE}'">
+        <div class="tx"><b>${esc(a.name)}</b><small>${a.type === 'msa' ? 'Microsoft · Premium' : 'Korsan hesap'}</small></div>
+        ${a.id === sel ? `<span class="badge gold">${ic('check')}Seçili</span>` : ''}
+        <button class="iconbtn" data-del="${a.id}" title="Kaldır">${ic('trash')}</button></div>`).join('')
+      : `<div class="empty" style="padding:20px">${ic('user')}<div>Henüz hesap yok</div></div>`;
+    $$('.acc', m).forEach(r => r.onclick = async e => {
+      const del = e.target.closest('[data-del]');
+      if (del) { await call('accountRemove', { id: del.dataset.del }); draw(); return; }
+      await call('accountSelect', { id: r.dataset.id }); draw();
+    });
+  }
+  draw();
+  const unsub = () => { };
+  const add = async () => {
+    try { await call('accountOffline', { name: $('#accName', m).value }); $('#accName', m).value = ''; draw(); toast('ok', 'Hesap eklendi'); }
+    catch (e) { toast('error', e.message); }
+  };
+  $('#accAdd', m).onclick = add;
+  $('#accName', m).onkeydown = e => { if (e.key === 'Enter') add(); };
+  $('#accMs', m).onclick = () => msModal(draw);
+  on('state', () => { if (document.body.contains(m)) draw(); });
+  setTimeout(() => $('#accName', m).focus(), 50);
+  return unsub;
+}
+async function msModal(after) {
+  let r;
+  try { r = await call('accountMsStart'); } catch (e) { toast('error', e.message); return; }
+  const m = modal(`<div class="mh"><h2>Microsoft girişi</h2><button class="iconbtn" data-x>${ic('x')}</button></div>
+    <div class="mb"><div>1. Aşağıdaki kod panoya kopyalandı.<br>2. <b>${esc(r.url)}</b> adresini aç, kodu yapıştır ve Microsoft hesabınla giriş yap.</div>
+    <div class="code">${esc(r.code)}</div>
+    <div style="display:flex;gap:9px;align-items:center;color:var(--mute)"><span class="spin"></span>Giriş bekleniyor… (şifren Hera'ya hiç girmez)</div></div>
+    <div class="mf"><button class="btn ghost" data-x>Vazgeç</button><button class="btn pri" id="msOpen">${ic('ext')}Giriş sayfasını aç</button></div>`, 'sm');
+  m.onclose = () => post({ cmd: 'accountMsCancel' });
+  $('#msOpen', m).onclick = () => post({ cmd: 'openUrl', url: r.url });
+  const done = x => { if (!document.body.contains(m)) return; m.onclose = null; m.remove(); toast('ok', `Hoş geldin, ${x.name}!`); after && after(); };
+  const fail = x => { if (!document.body.contains(m)) return; m.onclose = null; m.remove(); toast('error', x.error, 8000); };
+  listeners.msDone = [done]; listeners.msError = [fail];
+}
+
+/* ================================================================ MAGAZA (Modrinth) */
+const CATS = {
+  mod: [['', 'Tümü'], ['optimization', 'Optimizasyon'], ['utility', 'Araçlar'], ['decoration', 'Görsel'], ['adventure', 'Macera'], ['library', 'Kütüphane'], ['equipment', 'Ekipman'], ['social', 'Sosyal']],
+  resourcepack: [['', 'Tümü'], ['16x', '16x'], ['32x', '32x'], ['simplistic', 'Sade'], ['realistic', 'Gerçekçi'], ['combat', 'PvP'], ['gui', 'Arayüz'], ['fonts', 'Font']],
+  shader: [['', 'Tümü'], ['potato', 'Düşük'], ['low', 'Hafif'], ['medium', 'Orta'], ['high', 'Yüksek'], ['realistic', 'Gerçekçi'], ['cartoon', 'Çizgi']],
+};
+let shop = { type: 'mod', q: '', sort: 'relevance', cat: '', offset: 0, profile: null, busy: false, installed: new Set(), total: 0 };
+function shopProfile() { return S.profiles.find(p => p.id === shop.profile) || prof(); }
+function renderShopHeader() {
+  const p = shopProfile(); if (!p) return;
+  shop.profile = p.id;
+  $('#shopProf').innerHTML = `${picon(p)}<div><b>${esc(p.name)}</b> <small>${esc(p.mc)} · ${LOADERS[p.loader]}</small></div>${ic('chev')}`;
+}
+$('#shopProf').onclick = e => profilePop(e.currentTarget, id => { shop.profile = id; renderShopHeader(); shopSearch(true); });
+function openShop() { renderShopHeader(); drawCats(); if (!$('#shopBody').dataset.loaded || $('#shopBody').dataset.p !== shop.profile) shopSearch(true); }
+function drawCats() {
+  const c = CATS[shop.type];
+  $('#shopCats').style.display = c ? '' : 'none';
+  if (c) {
+    $('#shopCats').innerHTML = c.map(([k, n]) => `<button class="cat ${shop.cat === k ? 'on' : ''}" data-c="${k}">${n}</button>`).join('');
+    $$('#shopCats .cat').forEach(b => b.onclick = () => { shop.cat = b.dataset.c; drawCats(); shopSearch(true); });
+  }
+  $('.shop-top .search').style.display = shop.type === 'installed' ? 'none' : '';
+  $('#shopSort').style.display = shop.type === 'installed' ? 'none' : '';
+}
+$$('#shopTabs button').forEach(b => b.onclick = () => {
+  shop.type = b.dataset.t; shop.cat = '';
+  $$('#shopTabs button').forEach(x => x.classList.toggle('on', x === b));
+  drawCats(); shopSearch(true);
+});
+let qT;
+$('#shopQ').oninput = e => { clearTimeout(qT); qT = setTimeout(() => { shop.q = e.target.value; shopSearch(true); }, 320); };
+$('#shopSort').onchange = e => { shop.sort = e.target.value; shopSearch(true); };
+
+async function shopSearch(reset) {
+  const body = $('#shopBody');
+  body.dataset.loaded = '1'; body.dataset.p = shop.profile;
+  if (shop.type === 'installed') return drawInstalled();
+  const p = shopProfile();
+  if (reset) {
+    shop.offset = 0;
+    body.innerHTML = `<div class="mods">${Array.from({ length: 6 }, () => `<div class="card mod"><div class="mi skel"></div><div class="mt"><div class="skel" style="height:16px;width:45%"></div><div class="skel" style="height:12px;width:90%;margin-top:9px"></div><div class="skel" style="height:12px;width:70%;margin-top:6px"></div></div></div>`).join('')}</div>`;
+  }
+  if (p.loader === 'vanilla' && shop.type !== 'resourcepack') {
+    body.innerHTML = `<div class="empty">${ic('box')}<div><b>${esc(p.name)}</b> bir Vanilla profili.</div><div style="margin-top:4px">Mod ve shader için Fabric profili seç ya da oluştur.</div><button class="btn pri" style="margin-top:16px" onclick="profileModal()">${ic('plus')}Fabric profili oluştur</button></div>`;
+    return;
+  }
+  const token = Symbol(); shop.token = token;
+  try {
+    const r = await call('mrSearch', { profile: p.id, type: shop.type, q: shop.q, sort: shop.sort, offset: shop.offset, category: shop.cat });
+    if (shop.token !== token) return;
+    shop.installed = new Set(r.installed); shop.total = r.total;
+    const cards = r.hits.map(h => modCard(h)).join('');
+    if (reset) body.innerHTML = r.hits.length ? `<div class="mods">${cards}</div>` : `<div class="empty">${ic('search')}<div>Bu sürüm için sonuç yok</div></div>`;
+    else $('.mods', body).insertAdjacentHTML('beforeend', cards);
+    $('.more', body)?.remove();
+    if (shop.offset + r.hits.length < r.total) {
+      body.insertAdjacentHTML('beforeend', `<div class="more"><button class="btn">Daha fazla göster (${fmtN(r.total - shop.offset - r.hits.length)})</button></div>`);
+      $('.more button', body).onclick = () => { shop.offset += 24; shopSearch(false); };
+    }
+    bindMods();
+  } catch (e) { if (shop.token === token) body.innerHTML = `<div class="empty">${ic('warn')}<div>${esc(e.message)}</div></div>`; }
+}
+function modCard(h) {
+  const inst = shop.installed.has(h.project_id);
+  const upd = h.date_modified ? ago(Date.parse(h.date_modified)) : '';
+  return `<div class="card mod" data-id="${h.project_id}" data-slug="${esc(h.slug)}">
+    <img class="mi" src="${esc(h.icon_url || '')}" onerror="this.style.visibility='hidden'" loading="lazy">
+    <div class="mt"><h3>${esc(h.title)} <small>${esc(h.author)}</small></h3><p>${esc(h.description)}</p>
+      <div class="ms"><span>${ic('dl')}${fmtN(h.downloads)}</span><span>${ic('heart')}${fmtN(h.follows)}</span><span>${ic('clock')}${upd}</span></div></div>
+    <div class="ma"><button class="btn sm ${inst ? 'done' : 'pri'}" data-inst>${inst ? ic('check') + 'Yüklü' : ic('dl') + 'Yükle'}</button>
+      <button class="btn sm ghost" data-web title="Modrinth'te aç">${ic('ext')}</button></div></div>`;
+}
+function bindMods() {
+  $$('#shopBody .mod').forEach(c => {
+    if (c.dataset.b) return; c.dataset.b = 1;
+    $('[data-web]', c).onclick = () => post({ cmd: 'openUrl', url: `https://modrinth.com/${shop.type === 'shader' ? 'shader' : shop.type === 'resourcepack' ? 'resourcepack' : 'mod'}/${c.dataset.slug}` });
+    $('[data-inst]', c).onclick = async e => {
+      const b = e.currentTarget;
+      b.disabled = true; b.innerHTML = '<span class="spin"></span>Yükleniyor';
+      try {
+        const list = await call('mrInstall', { profile: shop.profile, id: c.dataset.id, type: shop.type });
+        b.disabled = false; b.className = 'btn sm done'; b.innerHTML = ic('check') + 'Yüklü';
+        shop.installed.add(c.dataset.id);
+        toast('ok', list.length > 1 ? `Yüklendi: ${list.join(', ')}` : `${list[0] || 'İçerik'} yüklendi`);
+      } catch (err) { b.disabled = false; b.innerHTML = ic('dl') + 'Yükle'; toast('error', err.message, 6000); }
+    };
+  });
+}
+async function drawInstalled() {
+  const p = shopProfile(), body = $('#shopBody');
+  body.innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  let list;
+  try { list = await call('content', { profile: p.id }); } catch (e) { body.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const groups = [['mod', 'Modlar', 'mods'], ['resourcepack', 'Kaynak paketleri', 'resourcepacks'], ['shader', 'Shader paketleri', 'shaderpacks']];
+  body.innerHTML = groups.map(([t, n, folder]) => {
+    const items = list.filter(x => x.type === t);
+    return `<div class="ihead"><h3>${n} (${items.length})</h3>
+        ${t === 'mod' ? `<button class="btn sm" data-upd>${ic('update')}Tümünü güncelle</button>` : ''}
+        <button class="btn sm" data-folder="${folder}">${ic('folder')}Klasör</button></div>
+      <div class="inst" style="margin-bottom:22px">${items.length ? items.map(x => `
+        <div class="card irow ${x.enabled ? '' : 'off'}" data-f="${esc(x.file)}" data-t="${t}">
+          ${x.hera ? `<img class="mi" src="logo.png">` : x.icon ? `<img class="mi" src="${esc(x.icon)}" onerror="this.style.visibility='hidden'">` : `<div class="mi">${ic('box')}</div>`}
+          <div class="tx"><b>${esc(x.hera ? 'Hera' : x.title)} ${x.hera ? `<span class="badge gold">${ic('crown')}Launcher</span>` : x.pack ? `<span class="badge green">${ic('bolt')}FPS paketi</span>` : ''}${x.dep ? '<span class="badge">bağımlılık</span>' : ''}</b>
+            <small>${esc(x.version || '')} · ${esc(x.file)} · ${fmtMB(x.size)}</small></div>
+          ${x.hera ? '' : `<span class="tog ${x.enabled ? 'on' : ''}" data-tog></span><button class="iconbtn" data-rm title="Kaldır">${ic('trash')}</button>`}
+        </div>`).join('') : `<div style="color:var(--dim);padding:6px 4px 4px">Boş</div>`}</div>`;
+  }).join('');
+  $$('[data-folder]', body).forEach(b => b.onclick = () => post({ cmd: 'openFolder', path: p.id, sub: b.dataset.folder }));
+  $('[data-upd]', body).onclick = async e => {
+    const b = e.currentTarget; b.disabled = true; b.innerHTML = '<span class="spin"></span>Güncelleniyor';
+    try { const r = await call('contentUpdate', { profile: p.id }); toast('ok', `${r.up} güncellendi` + (r.dis ? `, ${r.dis} uyumsuz kapatıldı` : '')); drawInstalled(); }
+    catch (er) { toast('error', er.message); b.disabled = false; }
+  };
+  $$('.irow', body).forEach(r => {
+    const t = $('[data-tog]', r);
+    if (t) t.onclick = async () => { const onv = !t.classList.contains('on'); await call('contentToggle', { profile: p.id, type: r.dataset.t, file: r.dataset.f, on: onv }); t.classList.toggle('on', onv); r.classList.toggle('off', !onv); };
+    const rm = $('[data-rm]', r);
+    if (rm) rm.onclick = async () => { await call('contentRemove', { profile: p.id, type: r.dataset.t, file: r.dataset.f }); r.remove(); toast('ok', 'Kaldırıldı'); };
+  });
+}
+
+/* ================================================================ PVP */
+const HDEF = {
+  badge: true, badgeTab: true,
+  hudFps: true, hudCps: true, hudKeys: true, hudPing: true, hudCoords: false, hudArmor: true, hudPotions: true, hudSprint: true, hudDir: false, hudClock: false,
+  hudColor: '#FFC83D', hudBg: true, hudScale: 1,
+  zoom: true, zoomScroll: true, zoomSmooth: true,
+  fullbright: false, lowFire: true, lowShield: false, noPumpkin: true, autoSprint: false,
+  hitColor: false, hitRgb: '#FF3030', hitParticles: 1, noHurtShake: true,
+};
+const PVP_GROUPS = [
+  ['crown', 'Hera rozeti', [
+    ['badge', 'Taç rozeti', 'Hera kullananların isminin solunda'],
+    ['badgeTab', 'Tab listesinde rozet', 'Oyuncu listesinde de göster'],
+  ]],
+  ['monitor', 'HUD', [
+    ['hudFps', 'FPS', 'Kare hızı'], ['hudCps', 'CPS', 'Sol/sağ tık hızı'],
+    ['hudKeys', 'Tuşlar', 'WASD + fare + boşluk'], ['hudPing', 'Ping', 'Sunucu gecikmesi'],
+    ['hudArmor', 'Zırh durumu', 'Zırh ve el dayanıklılığı'], ['hudPotions', 'İksir etkileri', 'Kalan süreleriyle'],
+    ['hudSprint', 'Koşu durumu', '[Koşuyor] göstergesi'], ['hudCoords', 'Koordinatlar', 'X Y Z'],
+    ['hudDir', 'Yön', 'Kuzey/Güney…'], ['hudClock', 'Saat', 'Gerçek saat'],
+  ]],
+  ['sword', 'Dövüş', [
+    ['autoSprint', 'Otomatik koşu', 'İleri basınca hep koş (Toggle Sprint)'],
+    ['hitColor', 'Vuruş rengi', 'Hasar alan varlığın rengi'],
+    ['noHurtShake', 'Hasar sarsıntısı yok', 'Vurulunca ekran sallanmaz'],
+    ['lowShield', 'Alçak kalkan', 'Kalkan ekranı daha az kaplar'],
+  ]],
+  ['eye', 'Görüş', [
+    ['zoom', 'Zoom (C)', 'OptiFine tarzı yakınlaştırma'], ['zoomScroll', 'Tekerlek ile zoom', 'Zoom sırasında ayarla'],
+    ['fullbright', 'Tam parlaklık', 'Karanlıkta da görürsün'], ['lowFire', 'Alçak ateş', 'Yanarken ateş ekranı kapatmaz'],
+    ['noPumpkin', 'Balkabağı perdesi yok', 'Kafadaki balkabağı görüşü kapatmaz'],
+  ]],
+];
+let pvp = { profile: null, cfg: {} };
+function pvpProfile() {
+  const sup = S.profiles.filter(p => p.heraSupported);
+  return S.profiles.find(p => p.id === pvp.profile && p.heraSupported) || (prof().heraSupported ? prof() : sup[0]) || prof();
+}
+async function renderPvp() {
+  const p = pvpProfile(); if (!p) return;
+  const changed = pvp.profile !== p.id; pvp.profile = p.id;
+  $('#pvpProf').innerHTML = `${picon(p)}<div><b>${esc(p.name)}</b> <small>${esc(p.mc)} · ${LOADERS[p.loader]}</small></div>${ic('chev')}`;
+  if (changed || !pvp.loaded) {
+    try { pvp.cfg = { ...HDEF, ...(await call('heraGet', { profile: p.id })) }; } catch { pvp.cfg = { ...HDEF }; }
+    pvp.loaded = true;
+  }
+  const c = pvp.cfg, box = $('#pvpSets');
+  box.innerHTML = PVP_GROUPS.map(([icn, title, items]) => `<div class="grp"><h3>${ic(icn)}${title}</h3><div class="setgrid">
+    ${items.map(([k, n, d]) => `<div class="set" data-k="${k}"><div class="tx"><b>${n}</b><small>${d}</small></div><span class="tog ${c[k] ? 'on' : ''}"></span></div>`).join('')}
+    ${title === 'HUD' ? `<div class="set wide"><div class="tx"><b>HUD rengi</b><small>Yazı vurgusu</small></div><input type="color" id="hcol" value="${c.hudColor}">
+       <div class="tx" style="flex:.7"><b>Arka plan</b><small>Yarı saydam kutu</small></div><span class="tog ${c.hudBg ? 'on' : ''}" data-k2="hudBg"></span></div>
+       <div class="set wide"><div class="tx"><b>HUD boyutu</b><small>${Math.round(c.hudScale * 100)}%</small></div><input type="range" class="range" id="hscale" min="50" max="200" step="5" value="${Math.round(c.hudScale * 100)}" style="max-width:260px"></div>` : ''}
+    ${title === 'Dövüş' ? `<div class="set wide"><div class="tx"><b>Vuruş rengi seçimi</b><small>Vuruş rengi açıkken kullanılır</small></div><input type="color" id="hitcol" value="${c.hitRgb}">
+       <div class="tx" style="flex:.8"><b>Vuruş parçacığı</b><small>${c.hitParticles}x kritik efekti</small></div><input type="range" class="range" id="hpart" min="1" max="5" value="${c.hitParticles}" style="max-width:160px"></div>` : ''}
+    </div></div>`).join('') + (p.heraSupported ? '' : `<div class="lockmsg"><div>${ic('crown')}<h3 style="margin:10px 0 6px">Hera modu bu profilde yok</h3><div style="color:var(--mute)">PvP ayarları Hera modunun olduğu ${(S.heraMods || []).join(', ')} Fabric profillerinde çalışır.</div></div></div>`);
+  box.classList.toggle('locked', !p.heraSupported);
+  $$('.set[data-k]', box).forEach(s => s.onclick = () => setCfg(s.dataset.k, !c[s.dataset.k], s));
+  $$('[data-k2]', box).forEach(t => t.onclick = e => { e.stopPropagation(); setCfg(t.dataset.k2, !c[t.dataset.k2]); t.classList.toggle('on', c[t.dataset.k2]); });
+  const rng = (el, fn) => { const u = () => el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); u(); el.oninput = () => { u(); fn(); }; };
+  if ($('#hcol')) $('#hcol').oninput = e => setCfg('hudColor', e.target.value.toUpperCase());
+  if ($('#hitcol')) $('#hitcol').oninput = e => setCfg('hitRgb', e.target.value.toUpperCase());
+  if ($('#hscale')) rng($('#hscale'), () => { setCfg('hudScale', $('#hscale').value / 100); $('#hscale').previousElementSibling.querySelector('small').textContent = $('#hscale').value + '%'; });
+  if ($('#hpart')) rng($('#hpart'), () => { setCfg('hitParticles', +$('#hpart').value); $('#hpart').previousElementSibling.querySelector('small').textContent = $('#hpart').value + 'x kritik efekti'; });
+  drawScene();
+}
+$('#pvpProf').onclick = e => profilePop(e.currentTarget, id => { pvp.profile = id; pvp.loaded = false; renderPvp(); }, p => p.heraSupported);
+let saveT;
+function setCfg(k, v, el) {
+  pvp.cfg[k] = v;
+  if (el) $('.tog', el)?.classList.toggle('on', !!v);
+  drawScene();
+  clearTimeout(saveT);
+  saveT = setTimeout(() => call('heraSet', { profile: pvp.profile, cfg: pvp.cfg }).catch(e => toast('error', e.message)), 250);
+}
+function drawScene() {
+  const c = pvp.cfg, sc = $('#scene'); if (!sc) return;
+  const lines = [];
+  if (c.hudFps) lines.push(`<div class="ln">FPS <span>247</span></div>`);
+  if (c.hudCps) lines.push(`<div class="ln">CPS <span>12 | 4</span></div>`);
+  if (c.hudPing) lines.push(`<div class="ln">Ping <span>18 ms</span></div>`);
+  if (c.hudCoords) lines.push(`<div class="ln">XYZ <span>124 64 -88</span></div>`);
+  if (c.hudDir) lines.push(`<div class="ln">Yön <span>Kuzey</span></div>`);
+  if (c.hudClock) lines.push(`<div class="ln">Saat <span>${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span></div>`);
+  if (c.hudSprint) lines.push(`<div class="ln">[Koşuyor]</div>`);
+  const pots = c.hudPotions ? `<div class="hud ${c.hudBg ? 'bg' : ''}" style="right:8px;top:8px;--hc:${c.hudColor};transform:scale(${c.hudScale});transform-origin:top right"><div class="ln">Hız II <span>1:24</span></div><div class="ln">Güç I <span>0:51</span></div></div>` : '';
+  sc.innerHTML = `<div class="sun"></div>
+    <div class="mob">${mobSvg(c.hitColor ? c.hitRgb : null)}</div>
+    <div class="tag">${c.badge ? '<img src="badge.png">' : ''}Hypex</div>
+    <div class="xh"></div>
+    <div class="fire ${c.lowFire ? 'low' : ''}"></div>
+    <div class="hud ${c.hudBg ? 'bg' : ''}" style="left:8px;top:8px;--hc:${c.hudColor};transform:scale(${c.hudScale});transform-origin:top left">${lines.join('')}</div>${pots}
+    ${c.hudKeys ? `<div class="keys" style="transform:scale(${c.hudScale});transform-origin:bottom left"><div style="visibility:hidden"></div><div class="on">W</div><div style="visibility:hidden"></div><div>A</div><div>S</div><div class="on">D</div>
+      <div class="mb2"><div class="on">LMB</div><div>RMB</div></div><div class="wide"></div></div>` : ''}
+    ${c.hudArmor ? `<div class="armor" style="transform:scale(${c.hudScale});transform-origin:bottom right"><div><i></i>363</div><div><i></i>528</div><div><i style="background:#c9c9c9"></i>495</div><div><i></i>429</div></div>` : ''}
+    <div class="hotbar">${Array.from({ length: 9 }, (_, i) => `<i class="${i === 0 ? 's' : ''}"></i>`).join('')}</div>`;
+}
+function mobSvg(hit) {
+  const skin = hit ? hit : '#c99a74', shirt = hit ? hit : '#2f9fb3', pants = hit ? hit : '#3b3f9e';
+  return `<svg viewBox="0 0 8 16" width="34" height="76" shape-rendering="crispEdges" style="opacity:${hit ? .92 : 1}">
+    <rect x="2" y="0" width="4" height="4" fill="${hit ? hit : '#5b3b22'}"/><rect x="2" y="1" width="4" height="3" fill="${skin}"/>
+    <rect x="2" y="4" width="4" height="6" fill="${shirt}"/><rect x="0" y="4" width="2" height="6" fill="${skin}"/><rect x="6" y="4" width="2" height="6" fill="${skin}"/>
+    <rect x="2" y="10" width="2" height="6" fill="${pants}"/><rect x="4" y="10" width="2" height="6" fill="${pants}"/></svg>`;
+}
+
+/* ================================================================ AYARLAR */
+function renderSettings() {
+  const s = S.settings;
+  const ram = s.ramMb || 0, max = Math.max(4096, Math.floor(S.totalRam / 1024) * 1024 - 2048);
+  $('#sgrid').innerHTML = `
+    <div class="card sc">
+      <h2><span class="ic">${ic('cpu')}</span>Bellek (RAM)</h2>
+      <div class="ramv"><b id="ramTxt"></b><small>Bilgisayarda ${(S.totalRam / 1024).toFixed(0)} GB · Önerilen ${(S.autoRam / 1024).toFixed(0)} GB</small></div>
+      <div><input type="range" class="range" id="ramR" min="0" max="${max}" step="512" value="${ram}"><div class="ticks"><span>Otomatik</span><span>${(max / 2048).toFixed(0)} GB</span><span>${(max / 1024).toFixed(0)} GB</span></div></div>
+      <div class="note">${ic('info')}PvP için fazla RAM daha iyi değildir: çöp toplayıcı duraklamalarını uzatır. Otomatik önerilir.</div>
+      <div class="srow"><div class="tx"><b>Çöp toplayıcı</b><small>G1: dengeli · ZGC: en düşük takılma (Java 21+, daha çok RAM)</small></div>
+        <div class="seg" id="gcSeg"><button data-v="g1">G1</button><button data-v="zgc">ZGC</button></div></div>
+    </div>
+    <div class="card sc">
+      <h2><span class="ic">${ic('monitor')}</span>Ekran</h2>
+      <div class="srow"><div class="tx"><b>Tam ekran başlat</b><small>Oyun tam ekran açılır</small></div><span class="tog ${s.fullscreen ? 'on' : ''}" data-b="fullscreen"></span></div>
+      <div class="row2"><div><label class="f">Genişlik</label><input class="input" id="sW" type="number" value="${s.width}"></div><div><label class="f">Yükseklik</label><input class="input" id="sH" type="number" value="${s.height}"></div></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">${[[1280, 720], [1600, 900], [1920, 1080], [2560, 1440]].map(([w, h]) => `<button class="btn sm" data-res="${w}x${h}">${w}×${h}</button>`).join('')}</div>
+    </div>
+    <div class="card sc">
+      <h2><span class="ic">${ic('rocket')}</span>Launcher</h2>
+      <div class="srow"><div class="tx"><b>Oyun açılınca</b><small>Launcher ne yapsın?</small></div>
+        <div class="seg" id="alSeg"><button data-v="hide">Küçült</button><button data-v="keep">Açık kalsın</button><button data-v="close">Kapat</button></div></div>
+      <div class="srow"><div class="tx"><b>Açılınca konsolu göster</b><small>Oyun günlüğünü canlı izle</small></div><span class="tog ${s.consoleOnLaunch ? 'on' : ''}" data-b="consoleOnLaunch"></span></div>
+      <div class="srow"><div class="tx"><b>Animasyonlar</b><small>Kapatmak eski PC'lerde arayüzü hafifletir</small></div><span class="tog ${s.animations !== false ? 'on' : ''}" data-b="animations"></span></div>
+      <div class="srow"><div class="tx"><b>Paralel indirme</b><small>${s.parallel} bağlantı</small></div><input type="range" class="range" id="parR" min="4" max="64" step="4" value="${s.parallel}" style="max-width:200px"></div>
+    </div>
+    <div class="card sc">
+      <h2><span class="ic">${ic('palette')}</span>Görünüm</h2>
+      <div class="srow"><div class="tx"><b>Vurgu rengi</b><small>Launcher teması</small></div>
+        <div class="swatches">${[['gold', '#ffb52e'], ['crimson', '#ff4d5e'], ['ice', '#4fc7ff'], ['emerald', '#34e08a'], ['violet', '#a96bff']].map(([k, c]) => `<button data-acc="${k}" class="${(s.accent || 'gold') === k ? 'on' : ''}" style="background:${c}"></button>`).join('')}</div></div>
+    </div>
+    <div class="card sc">
+      <h2><span class="ic">${ic('term')}</span>Gelişmiş</h2>
+      <div><label class="f">Genel JVM argümanları</label><input class="input" id="sJvm" placeholder="Boş bırakılabilir" value="${esc(s.jvmArgs || '')}"></div>
+      <div style="display:flex;gap:8px"><button class="btn" id="openData">${ic('folder')}Veri klasörü</button><button class="btn" id="openSite">${ic('ext')}crafthera.com</button></div>
+      <div style="color:var(--dim);font-size:12px">Hera Launcher v${S.ver} · Veri: ${esc(S.dataDir)}</div>
+    </div>`;
+  const save = patch => call('settingsSave', { s: { ...S.settings, ...patch } });
+  const rr = $('#ramR'), upd = () => { rr.style.setProperty('--p', (rr.value / rr.max * 100) + '%'); $('#ramTxt').textContent = +rr.value ? (rr.value / 1024).toFixed(1).replace('.', ',') + ' GB' : 'Otomatik · ' + (S.autoRam / 1024).toFixed(0) + ' GB'; };
+  upd(); rr.oninput = upd; rr.onchange = () => save({ ramMb: +rr.value });
+  const pr = $('#parR'), up2 = () => pr.style.setProperty('--p', ((pr.value - 4) / 60 * 100) + '%'); up2(); pr.oninput = () => { up2(); pr.parentElement.querySelector('small').textContent = pr.value + ' bağlantı'; }; pr.onchange = () => save({ parallel: +pr.value });
+  const seg = (id, key) => { $$(id + ' button').forEach(b => { b.classList.toggle('on', b.dataset.v === (s[key] || '')); b.onclick = () => save({ [key]: b.dataset.v }); }); };
+  seg('#gcSeg', 'gc'); seg('#alSeg', 'afterLaunch');
+  $$('[data-b]', $('#sgrid')).forEach(t => t.onclick = () => save({ [t.dataset.b]: !(t.dataset.b === 'animations' ? s.animations !== false : s[t.dataset.b]) }));
+  $$('[data-res]').forEach(b => b.onclick = () => { const [w, h] = b.dataset.res.split('x'); save({ width: +w, height: +h }); });
+  $('#sW').onchange = e => save({ width: +e.target.value }); $('#sH').onchange = e => save({ height: +e.target.value });
+  $('#sJvm').onchange = e => save({ jvmArgs: e.target.value });
+  $$('[data-acc]').forEach(b => b.onclick = () => save({ accent: b.dataset.acc }));
+  $('#openData').onclick = () => post({ cmd: 'openFolder', path: 'data' });
+  $('#openSite').onclick = () => post({ cmd: 'openUrl', url: 'https://crafthera.com' });
+}
+
+/* ================================================================ KONSOL + COKME */
+function openConsole() {
+  $('#console').classList.add('on');
+  call('log', { n: 800 }).then(lines => { $('#conPre').innerHTML = ''; lines.forEach(addLine); }).catch(() => { });
+}
+function addLine(l) {
+  const pre = $('#conPre');
+  const stick = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
+  const d = document.createElement('div');
+  d.textContent = l;
+  if (/ERROR|Exception|FATAL/.test(l)) d.className = 'e'; else if (/WARN/.test(l)) d.className = 'w'; else if (l.includes('[Hera]')) d.className = 'h';
+  pre.appendChild(d);
+  while (pre.childElementCount > 1500) pre.firstElementChild.remove();
+  if (stick) pre.scrollTop = pre.scrollHeight;
+}
+on('log', m => { if ($('#console').classList.contains('on')) addLine(m.line); });
+$('#conBtn').onclick = () => $('#console').classList.contains('on') ? $('#console').classList.remove('on') : openConsole();
+$('#conClose').onclick = () => $('#console').classList.remove('on');
+$('#conCopy').onclick = () => { navigator.clipboard.writeText($('#conPre').innerText); toast('ok', 'Konsol kopyalandı'); };
+$('#conKill').onclick = () => post({ cmd: 'kill' });
+on('crash', m => {
+  const md = modal(`<div class="mh"><h2>Oyun beklenmedik şekilde kapandı</h2><button class="iconbtn" data-x>${ic('x')}</button></div>
+    <div class="mb"><div style="color:var(--mute)">Çıkış kodu ${m.code}. Son satırlar:</div><div class="crashbox">${esc(m.tail)}</div>
+    ${m.report ? `<div class="note">${ic('info')}Çökme raporu: ${esc(m.report)}</div>` : ''}</div>
+    <div class="mf"><button class="btn" id="crCopy">${ic('copy')}Kopyala</button><button class="btn pri" data-x>Tamam</button></div>`);
+  $('#crCopy', md).onclick = () => { navigator.clipboard.writeText(m.tail); toast('ok', 'Kopyalandı'); };
+});
+
+/* ================================================================ GUNCELLEME */
+let upd = null;
+on('update', m => {
+  upd = m;
+  const b = $('#updBtn');
+  b.style.display = '';
+  $('span', b).textContent = (m.forced ? 'Zorunlu güncelleme ' : 'Güncelleme hazır ') + 'v' + m.version;
+  if (!on.updToasted) { on.updToasted = 1; toast('info', `Hera ${m.version} indirildi. ${m.forced ? 'Bu güncelleme zorunlu.' : 'Yeniden başlatınca kurulur.'}`, 7000); }
+});
+$('#updBtn').onclick = () => {
+  if (!upd) return;
+  const m = modal(`<div class="mh"><h2>Hera ${esc(upd.version)}</h2><button class="iconbtn" data-x>${ic('x')}</button></div>
+    <div class="mb"><div style="color:var(--mute)">Şu anki sürüm v${esc(S.ver)} · ${upd.files} dosya indirildi</div>
+    ${upd.notes ? `<div class="note" style="white-space:pre-wrap">${ic('spark')}${esc(upd.notes)}</div>` : ''}</div>
+    <div class="mf"><button class="btn ghost" data-x>Sonra</button><button class="btn pri" id="updGo">${ic('update')}Yeniden başlat ve güncelle</button></div>`, 'sm');
+  $('#updGo', m).onclick = async () => { try { await call('updateApply'); } catch (e) { toast('error', e.message); } };
+};
+
+/* ================================================================ arka plan efekti */
+(function bg() {
+  const cv = $('#bgfx'), ctx = cv.getContext('2d');
+  let W, H, parts = [], last = 0;
+  function size() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+  size(); addEventListener('resize', size);
+  for (let i = 0; i < 34; i++) parts.push({ x: Math.random(), y: Math.random(), s: 2 + Math.random() * 5, v: .00012 + Math.random() * .00035, a: .04 + Math.random() * .12, r: Math.random() * 6 });
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (t - last < 33 || document.hidden || document.body.classList.contains('noanim')) return;
+    last = t;
+    ctx.clearRect(0, 0, W, H);
+    const col = getComputedStyle(document.documentElement).getPropertyValue('--a2').trim() || '#ffa020';
+    for (const p of parts) {
+      p.y -= p.v * 33; if (p.y < -0.05) { p.y = 1.05; p.x = Math.random(); }
+      const x = p.x * W + Math.sin(t / 2400 + p.r) * 18, y = p.y * H;
+      ctx.globalAlpha = p.a * (page === 'home' ? 1 : .5);
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.round(x), Math.round(y), p.s, p.s);
+    }
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ================================================================ baslat */
+post({ cmd: 'ready' });
+setTimeout(pingServer, 300);
+setInterval(() => { if (!document.hidden) pingServer(); }, 60000);
+window.go = go; window.profileModal = profileModal;
+
+/* ================================================================ tarayicida onizleme (WebView2 yokken sahte veri) */
+function mockHost(o) {
+  const reply = (data, ok = true) => setTimeout(() => onMsg({ ev: 'reply', rid: o.rid, ok, data, error: ok ? null : data }), 120);
+  const st = mockHost.st ||= {
+    ev: 'state', ver: '1.0.0', autoRam: 4096, totalRam: 16384, game: 'idle', heraMods: ['1.21.11'], dataDir: 'C:\\Users\\…\\.hera',
+    settings: { ramMb: 0, width: 1280, height: 720, gc: 'g1', afterLaunch: 'hide', selectedProfile: 'hera-pvp', selectedAccount: 'off-hypex', accent: 'gold', animations: true, parallel: 24 },
+    profiles: [
+      { id: 'hera-pvp', name: 'Hera', mc: '1.21.11', loader: 'fabric', icon: 'crown', locked: true, heraSupported: true, heraMod: true, fpsPack: true, lastPlayed: Date.now() - 3600e3, playMs: 5.2e6 },
+      { id: '189', name: '1.8.9 Klasik', mc: '1.8.9', loader: 'legacyfabric', icon: 'sword', heraSupported: false, heraMod: true, fpsPack: true, lastPlayed: 0, playMs: 0 },
+      { id: 'yeni', name: '26.3 Keşif', mc: '26.3', loader: 'fabric', icon: 'gem', heraSupported: false, fpsPack: true, lastPlayed: Date.now() - 86400e3 * 3, playMs: 7.2e5 },
+    ],
+    accounts: [{ id: 'off-hypex', type: 'offline', name: 'Hypex' }],
+  };
+  switch (o.cmd) {
+    case 'ready': setTimeout(() => onMsg(st), 50); break;
+    case 'server': reply({ players: { online: 302, max: 10000 }, ping: 18, description: { text: '§6§lCraftHera §7» §fTowny & BoxPvP\n§eYeni sezon başladı!' } }); break;
+    case 'versions': reply({ versions: ['26.3', '26.2', '26.1', '1.21.11', '1.21.10', '1.21.8', '1.21.4', '1.21.1', '1.20.6', '1.20.4', '1.20.1', '1.19.4', '1.18.2', '1.17.1', '1.16.5', '1.12.2', '1.8.9', '1.7.10'].map((id, i) => ({ id, type: 'release', release: '2025-01-01', index: i })), fabric: ['26.3', '1.21.11', '1.20.1', '1.16.5'], legacyfabric: ['1.8.9', '1.12.2', '1.7.10'], quilt: ['1.21.11', '1.20.1'] }); break;
+    case 'heraGet': reply({}); break;
+    case 'mrSearch': reply({ hits: [{ project_id: 'AANobbMI', slug: 'sodium', title: 'Sodium', author: 'jellysquid3', description: 'The fastest and most compatible rendering optimization mod for Minecraft.', downloads: 61e6, follows: 25e3, date_modified: '2026-11-01', icon_url: '' }], total: 1, installed: [] }); break;
+    case 'content': reply([]); break;
+    default: if (o.rid) reply(null);
+  }
+}
