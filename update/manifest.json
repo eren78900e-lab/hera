@@ -1,7 +1,7 @@
 {
-  "version": "1.1.1",
-  "date": "2026-11-18T17:20:21.8143154Z",
-  "notes": "Kozmetik dolab\u0131: Hera/Kral/Buz tac\u0131, Muhaf\u0131z Mi\u011Fferi, \u015Feytan boynuzlar\u0131, hale, melek ve \u015Feytan kanatlar\u0131, kuma\u015F fizikli HD pelerinler. Hera ESC men\u00FCs\u00FC, F5\u0027te kendi ismin, sohbet arama \u002B s\u0131n\u0131rs\u0131z sohbet ge\u00E7mi\u015Fi, sar\u0131 Hera pencere ba\u015Fl\u0131\u011F\u0131 ve ikonu, net ta\u00E7 rozeti, launcher\u0027da hesab\u0131n\u0131n skiniyle 3D kozmetik \u00F6nizleme.",
+  "version": "1.1.2",
+  "date": "2026-11-18T18:08:29.4634923Z",
+  "notes": "Kozmetikler art\u0131k di\u011Fer Hera oyuncular\u0131na da g\u00F6r\u00FCn\u00FCyor (Hera kozmetik sunucusu).",
   "min": "",
   "files": [
     {
@@ -1206,8 +1206,8 @@
     },
     {
       "p": "mods/hera-1.21.11.jar",
-      "h": "a5c0b8ff8b082138b65ed674d510303900efbc9b5ed0ab2a90929fe32f0de548",
-      "s": 1331558
+      "h": "6360762b12a0cabe24cc19c575e2f0eae975947a00028156e3e1e26f7e96d627",
+      "s": 1331599
     },
     {
       "p": "mscordaccore.dll",
@@ -1396,7 +1396,7 @@
     },
     {
       "p": "version.txt",
-      "h": "cc52f678848b814373757b460383bf61960e4943c203735adde0a350b3e50989",
+      "h": "77123b8e4bdbd54505bf6e8021527ac60281602a06fe307564532c4dba39dbca",
       "s": 6
     },
     {
@@ -1405,7 +1405,5 @@
       "s": 1955624
     }
   ],
-  "remove": [
-    "ui/cosmetics/kask_sovalye.json"
-  ]
+  "remove": []
 }
