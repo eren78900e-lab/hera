@@ -1,7 +1,7 @@
 {
-  "version": "1.2.0",
-  "date": "2026-11-18T21:45:31.5240134Z",
-  "notes": "Staff: yaln\u0131z adminlerin ekledi\u011Fi ki\u015Filer g\u00F6r\u00FCr; Leyleq, ForClipso, LefLeetz admin; oyundan staff/admin \u015Fifresi de\u011Fi\u015Ftirme. Hera Tac\u0131 yeniden: sivri di\u015Fli ger\u00E7ek ta\u00E7 \u002B hafif parlama.",
+  "version": "1.2.1",
+  "date": "2026-11-18T22:14:38.4120128Z",
+  "notes": "Kozmetik: k\u00FC\u00E7\u00FCk resimlerde kendi skinin; pelerin art\u0131k g\u00F6vdenin i\u00E7ine girmiyor.",
   "min": "",
   "files": [
     {
@@ -1256,8 +1256,8 @@
     },
     {
       "p": "ui/app.js",
-      "h": "ed622a8bef83eca6b3ae99e4d985a0aa95231d563f6106817519557ccfc8bad0",
-      "s": 61940
+      "h": "a70c3f57ce7c19a9ed01daaf3771c5e3f0d32b2d05ec4f8fabbfcb28bf981897",
+      "s": 62423
     },
     {
       "p": "ui/badge.png",
@@ -1336,8 +1336,8 @@
     },
     {
       "p": "ui/cosview.js",
-      "h": "560a8cff2315b5ee17597f9dafad97c11a257e34770c54bdbc9116ef1e1db522",
-      "s": 10947
+      "h": "326e5b002b4187b0de3fc48291e764091292168ff8bbe9c4b866cf41cc62f709",
+      "s": 11196
     },
     {
       "p": "ui/index.html",
@@ -1396,7 +1396,7 @@
     },
     {
       "p": "version.txt",
-      "h": "1e5b51cde515396a9fa762909cf8ca6584ccc564b325d2eebeea76175fe95c4d",
+      "h": "6cf4e084b47f33c9b02ef79279d157833868f8f70514169a768be353ee328fea",
       "s": 6
     },
     {
