@@ -1,7 +1,7 @@
 {
-  "version": "1.1.3",
-  "date": "2026-11-18T19:57:45.0220919Z",
-  "notes": "Sohbette ara kutusu sola, sohbetin hemen alt\u0131na ta\u015F\u0131nd\u0131. Launcher yeniden derlendi.",
+  "version": "1.2.0",
+  "date": "2026-11-18T21:45:31.5240134Z",
+  "notes": "Staff: yaln\u0131z adminlerin ekledi\u011Fi ki\u015Filer g\u00F6r\u00FCr; Leyleq, ForClipso, LefLeetz admin; oyundan staff/admin \u015Fifresi de\u011Fi\u015Ftirme. Hera Tac\u0131 yeniden: sivri di\u015Fli ger\u00E7ek ta\u00E7 \u002B hafif parlama.",
   "min": "",
   "files": [
     {
@@ -1206,8 +1206,8 @@
     },
     {
       "p": "mods/hera-1.21.11.jar",
-      "h": "2ffb8d4eeada8d556bfef00da36d132f4d5705845ae9c2d483fb7e144d452961",
-      "s": 1331818
+      "h": "a0cd886d2a8d046f68fb78e9df0940b1079e60f413719190353e30ea70b37db3",
+      "s": 1520747
     },
     {
       "p": "mscordaccore.dll",
@@ -1266,33 +1266,33 @@
     },
     {
       "p": "ui/cosmetics/boynuz_seytan.json",
-      "h": "43070b8ac46ab49feb769808104927c3523908089f1d0d94373d924fe75716f6",
-      "s": 108529
+      "h": "3f1246bf59a17d5b291805b9b9a3327d8903aaf7d977245f303350a660b6a111",
+      "s": 108542
     },
     {
       "p": "ui/cosmetics/catalog.json",
-      "h": "0e950ba3591db5bc360f6d7249a243ce5049f7e17e295f46e560a8dad76b191e",
+      "h": "87dab06827cbb5e9f475276e48a641cc93b18655ae23484a3dc5773826ec22da",
       "s": 2126
     },
     {
       "p": "ui/cosmetics/hale.json",
-      "h": "319d72cc85ce0e8db75a9532f3634fcf1d0931302a837bcb6168f439d1b4ba6d",
-      "s": 59857
+      "h": "b754af388d9805e5379ffe503ce92e519a54b46d80b091143db505c27e5bbdad",
+      "s": 59870
     },
     {
       "p": "ui/cosmetics/kanat_melek.json",
-      "h": "bc915ef07f0827d4f7958d6da886b2aced6ccbe2dc10b91adc2189d26e2cfc04",
-      "s": 786833
+      "h": "33f6698271ac4abc8f8955b9071b2a16de89d4587421ac55660566c59ef5bf35",
+      "s": 786846
     },
     {
       "p": "ui/cosmetics/kanat_seytan.json",
-      "h": "5afc244f4b1113bee4effc4a246788b131afb04e7256fb4258d0189d02bc0373",
-      "s": 260356
+      "h": "79b414c42ec45ff53dbd0a01d13c891383dfa867ea3e7563dbb946d876d088f4",
+      "s": 260369
     },
     {
       "p": "ui/cosmetics/kask_muhafiz.json",
-      "h": "0b7282a8ca9b4fd0505f79f5e2ef3f243b3d120953100a5a3ad7211c57755b98",
-      "s": 1088850
+      "h": "833fab6bdd1955769558c7e9ed2fcde5588247c35d23d0c86f33585c4a1b0df2",
+      "s": 1088863
     },
     {
       "p": "ui/cosmetics/pel_ates.png",
@@ -1316,28 +1316,28 @@
     },
     {
       "p": "ui/cosmetics/tac_altin.json",
-      "h": "18bc012232c7d502d500f828427a6aac60d7fd5d5b6b8a647e15519125a619dd",
-      "s": 539209
+      "h": "30c75fc78e2a655cc7c9cf1aaa2d55197002d4bebd7f1e6ae2364541194874ef",
+      "s": 539235
     },
     {
       "p": "ui/cosmetics/tac_buz.json",
-      "h": "f2997379c4f6594a4a7fd1a660ac396cf50a8af4af4ca09c7269e70d2904d909",
-      "s": 241595
+      "h": "7ab5e910bfb12915c320cc34998eb7a0dee4359249ef7f02ba0c0e659a0f764d",
+      "s": 241621
     },
     {
       "p": "ui/cosmetics/tac_hera.json",
-      "h": "8789ca4ab6ab4e7656b5c86d626147d63ba3e28d9e6e8a96a9b4cf4ed4da12b0",
-      "s": 429026
+      "h": "5bff9174aa67d9f884365223541d86bc2aba46321b33273569a1f8450cbb5bf0",
+      "s": 1147311
     },
     {
       "p": "ui/cosprev.html",
-      "h": "3b515b867bd41f21cb7964ab47940b682985910c5741f2dd0dd1f31b964c956f",
-      "s": 1480
+      "h": "5d233f13fee1603edd82dae8746e09ac216b8b10e49b6ac7c5e5f4724c55fc4a",
+      "s": 1710
     },
     {
       "p": "ui/cosview.js",
-      "h": "4209e03fbf5c5c5d4641579375d3281f4f277ca48363d64ae47634626ed2e303",
-      "s": 10771
+      "h": "560a8cff2315b5ee17597f9dafad97c11a257e34770c54bdbc9116ef1e1db522",
+      "s": 10947
     },
     {
       "p": "ui/index.html",
@@ -1396,7 +1396,7 @@
     },
     {
       "p": "version.txt",
-      "h": "5dae0c0a5ed3cdaa78704e25bb38d72c31018311e933283d06ed4f93360bfc6c",
+      "h": "1e5b51cde515396a9fa762909cf8ca6584ccc564b325d2eebeea76175fe95c4d",
       "s": 6
     },
     {
