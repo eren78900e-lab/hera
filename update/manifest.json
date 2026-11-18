@@ -1,7 +1,7 @@
 {
-  "version": "1.1.2",
-  "date": "2026-11-18T18:08:29.4634923Z",
-  "notes": "Kozmetikler art\u0131k di\u011Fer Hera oyuncular\u0131na da g\u00F6r\u00FCn\u00FCyor (Hera kozmetik sunucusu).",
+  "version": "1.1.3",
+  "date": "2026-11-18T19:57:45.0220919Z",
+  "notes": "Sohbette ara kutusu sola, sohbetin hemen alt\u0131na ta\u015F\u0131nd\u0131. Launcher yeniden derlendi.",
   "min": "",
   "files": [
     {
@@ -21,17 +21,17 @@
     },
     {
       "p": "Hera.deps.json",
-      "h": "67bacb97b9bacd51b93ac78f5431fc006770c2412e1a2970b76bbc87513c456c",
+      "h": "d8e558abbd10647098ddc633734852a2c680924dca41d3b144e3d33af2b3e84c",
       "s": 37967
     },
     {
       "p": "Hera.dll",
-      "h": "085ae7dcbcbe1d257607c53ce6098af35fc05e5178c8ed0ae9a16bb75176cc50",
+      "h": "8d3977f25e3f816e4fca0082446eef46f1443b81bfa971f0492eaba61ca14f6c",
       "s": 512512
     },
     {
       "p": "Hera.exe",
-      "h": "943a941bb28cc6e23818d99a9ddf53510718885f7a514ec0f6163a8cabb50d81",
+      "h": "7d998f92f30bafd6e0fb0d6e4568b98c9de211d91cbb700a634457a322f5a816",
       "s": 296448
     },
     {
@@ -1206,8 +1206,8 @@
     },
     {
       "p": "mods/hera-1.21.11.jar",
-      "h": "6360762b12a0cabe24cc19c575e2f0eae975947a00028156e3e1e26f7e96d627",
-      "s": 1331599
+      "h": "2ffb8d4eeada8d556bfef00da36d132f4d5705845ae9c2d483fb7e144d452961",
+      "s": 1331818
     },
     {
       "p": "mscordaccore.dll",
@@ -1396,7 +1396,7 @@
     },
     {
       "p": "version.txt",
-      "h": "77123b8e4bdbd54505bf6e8021527ac60281602a06fe307564532c4dba39dbca",
+      "h": "5dae0c0a5ed3cdaa78704e25bb38d72c31018311e933283d06ed4f93360bfc6c",
       "s": 6
     },
     {
